@@ -14,7 +14,6 @@ return function()
 			framework = GetResourceState(Core.Ox):find('start') and Core.Ox
 			or GetResourceState(Core.QB):find('start') and Core.QB
 			or GetResourceState(Core.ESX):find('start') and Core.ESX
-			or GetResourceState(Core.JLRP):find('start') and Core.JLRP
 
 			if not framework then
 				error('Unable to determine framework (convar is not set, or resource was renamed)')
