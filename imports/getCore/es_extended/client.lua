@@ -3,12 +3,16 @@ if not lib.player then lib.player() end
 return function(resource)
 	local ESX = exports[resource]:getSharedObject()
 
-	RegisterNetEvent('esx:playerLoaded', function(xPlayer)
+	RegisterNetEvent('JLRP-Framework:playerLoaded', function(xPlayer)
 		ESX.PlayerData = xPlayer
 	end)
 
-	RegisterNetEvent('esx:setJob', function(job)
+	RegisterNetEvent('JLRP-Framework:setJob', function(job)
 		ESX.PlayerData.job = job
+	end)
+	
+	RegisterNetEvent('JLRP-Framework:setGang', function(gang)
+		ESX.PlayerData.gang = gang
 	end)
 
 	lib.addPlayerMethod('hasGroup', function(_, filter)
