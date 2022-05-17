@@ -1,16 +1,31 @@
 local glm = require 'glm'
 Zones = {}
 
+local function makeTriangles(t)
+	local t1, t2
+	if t[3] and t[4] then
+		t1 = mat(t[1], t[2], t[3])
+		t2 = mat(t[2], t[3], t[4])
+	else
+		t1 = mat(t[1], t[2], t[3] or t[4])
+	end
+	return t1, t2
+end
+
 local function getTriangles(polygon)
-	local extremes = { polygon.projectToAxis(polygon, vec(1, 0, 0)) }
+	local triangles = {}
+	if polygon:isConvex() then
+		for i = 2, #polygon - 1 do
+			triangles[#triangles + 1] = mat(polygon[1], polygon[i], polygon[i + 1])
+		end
+		return triangles
+	end
 
 	local points = {}
 	local sides = {}
 	local horizontals = {}
-	local triangles = {}
-
-	local h
 	for i = 1, #polygon do
+		local h
 		local point = polygon[i]
 		local unique = true
 
@@ -32,6 +47,7 @@ local function getTriangles(polygon)
 		points[polygon[i]] = {side = i, horizontal = h, uses = 0}
 	end
 
+	local extremes = { polygon.projectToAxis(polygon, vec(1, 0, 0)) }
 	for i = 1, #horizontals do
 		local horizontal = horizontals[i]
 		local hLineStart, hLineEnd = vec(extremes[1], horizontal[1].yz), vec(extremes[2], horizontal[1].yz)
@@ -79,21 +95,6 @@ local function getTriangles(polygon)
 
 	local function left(a, b)
 		return a.x < b.x
-	end
-
-	local function makeTriangles(t)
-		if t[3] and t[4] then
-			triangles[#triangles + 1] = mat(t[1], t[2], t[3])
-			triangles[#triangles + 1] = mat(t[2], t[3], t[4])
-			for i = 1, #t do
-				points[t[i]].uses += 1
-			end
-		else
-			triangles[#triangles + 1] = mat(t[1], t[2], t[3] or t[4])
-			for k, v in pairs(t) do
-				points[v].uses += 2
-			end
-		end
 	end
 
 	for i = 1, #sides do
@@ -189,7 +190,18 @@ local function getTriangles(polygon)
 					end
 
 					if c or d then
-						makeTriangles({a, b, c, d})
+						local t = {a, b, c, d}
+						nTriangles = #triangles
+						triangles[nTriangles + 1], triangles[nTriangles + 2] = makeTriangles(t)
+						if c and d then
+							for i = 1, #t do
+								points[t[i]].uses += 1
+							end
+						else
+							for k, v in pairs(t) do
+								points[v].uses += 2
+							end
+						end
 					end
 				end
 			else
@@ -220,17 +232,21 @@ CreateThread(function()
 			local contains = zone:contains(coords)
 
 			if contains then
+				if zone.onEnter and not zone.insideZone then
+					zone:onEnter()
+				end
+
 				if zone.inside then
 					insideCount += 1
 					inside[insideCount] = zone
 				end
 
-				if zone.onEnter and not zone.insideZone then
+				if not zone.insideZone then
 					zone.insideZone = true
-					zone:onEnter()
 				end
 			elseif zone.insideZone then
-				zone.insideZone = nil
+				zone.insideZone = false
+
 				if zone.onExit then
 					zone:onExit()
 				end
@@ -262,40 +278,21 @@ CreateThread(function()
 	end
 end)
 
-local function debugPoly(self)
-	if self.triangles then
-		for i = 1, #self.triangles do
-			local triangle = self.triangles[i]
-			DrawPoly(triangle[1], triangle[2], triangle[3], 255, 42, 24, 100)
-			DrawPoly(triangle[2], triangle[1], triangle[3], 255, 42, 24, 100)
-		end
-	else
-		local polygon = self.polygon
-
-		for i = 2, #self.polygon - 1 do
-			DrawPoly(polygon[1], polygon[i], polygon[i + 1], 255, 42, 24, 100)
-			DrawPoly(polygon[i], polygon[1], polygon[i + 1], 255, 42, 24, 100)
-		end
-	end
-end
-
 local DrawLine = DrawLine
+local DrawPoly = DrawPoly
 
-local function debugBox(self)
-	DrawLine(self.vertices[1], self.vertices[2], 255, 42, 24, 225)
-	DrawLine(self.vertices[2], self.vertices[3], 255, 42, 24, 225)
-	DrawLine(self.vertices[3], self.vertices[4], 255, 42, 24, 225)
-	DrawLine(self.vertices[4], self.vertices[1], 255, 42, 24, 225)
-
-	DrawLine(self.vertices[5], self.vertices[6], 255, 42, 24, 225)
-	DrawLine(self.vertices[6], self.vertices[7], 255, 42, 24, 225)
-	DrawLine(self.vertices[7], self.vertices[8], 255, 42, 24, 225)
-	DrawLine(self.vertices[8], self.vertices[5], 255, 42, 24, 225)
-
-	DrawLine(self.vertices[1], self.vertices[7], 255, 42, 24, 225)
-	DrawLine(self.vertices[2], self.vertices[8], 255, 42, 24, 225)
-	DrawLine(self.vertices[3], self.vertices[5], 255, 42, 24, 225)
-	DrawLine(self.vertices[4], self.vertices[6], 255, 42, 24, 225)
+local function debugPoly(self)
+	for i = 1, #self.triangles do
+		local triangle = self.triangles[i]
+		DrawPoly(triangle[1], triangle[2], triangle[3], 255, 42, 24, 100)
+		DrawPoly(triangle[2], triangle[1], triangle[3], 255, 42, 24, 100)
+	end
+	for i = 1, #self.polygon do
+		local thickness = vec(0, 0, self.thickness / 2)
+		DrawLine(self.polygon[i] + thickness, self.polygon[i] - thickness, 255, 42, 24, 225)
+		DrawLine(self.polygon[i] + thickness, (self.polygon[i + 1] or self.polygon[1]) + thickness, 255, 42, 24, 225)
+		DrawLine(self.polygon[i] - thickness, (self.polygon[i + 1] or self.polygon[1]) - thickness, 255, 42, 24, 225)
+	end
 end
 
 local function debugSphere(self)
@@ -305,37 +302,24 @@ end
 local glm_polygon_contains = glm.polygon.contains
 
 local function contains(self, coords)
-	return glm_polygon_contains(self.polygon, coords, self.thickness)
+	return glm_polygon_contains(self.polygon, coords, self.thickness / 4)
 end
 
 local function insideSphere(self, coords)
 	return #(self.coords - coords) < self.radius
 end
 
-local function getBoxVertices(self)
-	return {
-		self.coords + vec3(self.size.x, self.size.y, self.thickness) * self.rotation,
-		self.coords + vec3(-self.size.x, self.size.y, self.thickness) * self.rotation,
-		self.coords + vec3(-self.size.x, -self.size.y, self.thickness) * self.rotation,
-		self.coords + vec3(self.size.x, -self.size.y, self.thickness) * self.rotation,
-		self.coords - vec3(self.size.x, self.size.y, self.thickness) * self.rotation,
-		self.coords - vec3(-self.size.x, self.size.y, self.thickness) * self.rotation,
-		self.coords - vec3(-self.size.x, -self.size.y, self.thickness) * self.rotation,
-		self.coords - vec3(self.size.x, -self.size.y, self.thickness) * self.rotation,
-	}
-end
-
 return {
 	poly = function(data)
 		data.id = #Zones + 1
-		data.thickness = data.thickness or 2
+		data.thickness = data.thickness or 4
 		data.polygon = glm.polygon.new(data.points)
 		data.coords = data.polygon:centroid()
 		data.remove = removeZone
 		data.contains = contains
 
 		if data.debug then
-			data.triangles = not data.polygon:isConvex() and getTriangles(data.polygon)
+			data.triangles = getTriangles(data.polygon)
 			data.debug = debugPoly
 		end
 
@@ -345,7 +329,8 @@ return {
 
 	box = function(data)
 		data.id = #Zones + 1
-		data.thickness = data.size.z or 2
+		data.size = data.size and data.size / 2 or vec3(2)
+		data.thickness = data.size.z * 2 or 4
 		data.rotation = quat(data.rotation or 0, vec3(0, 0, 1))
 		data.polygon = (data.rotation * glm.polygon.new({
 			vec3(data.size.x, data.size.y, 0),
@@ -357,8 +342,8 @@ return {
 		data.contains = contains
 
 		if data.debug then
-			data.vertices = getBoxVertices(data)
-			data.debug = debugBox
+			data.triangles = {makeTriangles({data.polygon[1], data.polygon[2], data.polygon[4], data.polygon[3]})}
+			data.debug = debugPoly
 		end
 
 		Zones[data.id] = data
