@@ -15,7 +15,16 @@ return function(resource)
 		ESX.PlayerData.gang = gang
 	end)
 
-	lib.addPlayerMethod('hasGroup', function(_, filter)
+	local CPlayer = lib.getPlayer()
+
+	function lib.getPlayer()
+		return setmetatable({
+			id = cache.playerId,
+			serverId = cache.serverId,
+		}, CPlayer)
+	end
+
+	function CPlayer:hasGroup(filter)
 		local data = ESX.PlayerData
 		local type = type(filter)
 
@@ -40,7 +49,9 @@ return function(resource)
 				end
 			end
 		end
-	end)
+	end
+
+	player = lib.getPlayer()
 
 	return ESX
 end
