@@ -18,24 +18,25 @@ return function(resource)
 
 	function CPlayer:hasGroup(filter)
 		local type = type(filter)
-
+		local job = self.getJob()
+		
 		if type == 'string' then
-			if self.job.name == filter then
-				return self.job.name, self.job.grade
+			if job.name == filter and job.onDuty then
+				return job.name, job.grade
 			end
 		else
 			local tabletype = table.type(filter)
 
 			if tabletype == 'hash' then
-				local grade = filter[self.job.name]
+				local grade = filter[job.name]
 
-				if grade and grade <= self.job.grade then
-					return self.job.name, self.job.grade
+				if grade and grade <= job.grade and job.onDuty then
+					return job.name, job.grade
 				end
 			elseif tabletype == 'array' then
 				for i = 1, #filter do
-					if self.job.name == filter[i] then
-						return self.job.name, self.job.grade
+					if job.name == filter[i] and job.onDuty then
+						return job.name, job.grade
 					end
 				end
 			end
