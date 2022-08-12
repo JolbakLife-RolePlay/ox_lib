@@ -8,10 +8,12 @@ import {
   Text,
   Flex,
   Spacer,
+  Image,
+  HStack,
 } from "@chakra-ui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Option, ContextMenuProps } from "../../interfaces/context";
-import { fetchNui } from "../../utils/fetchNui";
+import { Option, ContextMenuProps } from "../../../interfaces/context";
+import { fetchNui } from "../../../utils/fetchNui";
 
 const openMenu = (id: string | undefined) => {
   fetchNui<ContextMenuProps>("openContext", id);
@@ -54,6 +56,18 @@ const Item: React.FC<{
                   : clickContext(option[0])
               }
             >
+              {option[1]?.icon && (
+                <FontAwesomeIcon
+                  fixedWidth
+                  icon={option[1].icon}
+                  fontSize={20}
+                  style={{
+                    marginRight: 10,
+                    justifySelf: "center",
+                    color: option[1].iconColor,
+                  }}
+                />
+              )}
               <Box>
                 <Box paddingBottom={option[1].description ? 1 : 0}>
                   <Text w="100%" fontWeight="medium">
@@ -81,7 +95,7 @@ const Item: React.FC<{
               )}
             </Flex>
             <Portal>
-              {option[1].metadata && (
+              {(option[1].metadata || option[1].image) && (
                 <PopoverContent
                   fontFamily="Poppins"
                   bg="gray.800"
@@ -91,31 +105,34 @@ const Item: React.FC<{
                   maxW="2xs"
                 >
                   <PopoverBody>
-                    {Array.isArray(option[1].metadata) ? (
-                      option[1].metadata.map(
-                        (
-                          metadata: string | { label: string; value: any },
-                          index: number
-                        ) => (
-                          <Text key={`context-metadata-${index}`}>
-                            {typeof metadata === "string"
-                              ? `${metadata}`
-                              : `${metadata.label}: ${metadata.value}`}
-                          </Text>
+                    <>
+                      {option[1].image && <Image src={option[1].image} />}
+                      {Array.isArray(option[1].metadata) ? (
+                        option[1].metadata.map(
+                          (
+                            metadata: string | { label: string; value: any },
+                            index: number
+                          ) => (
+                            <Text key={`context-metadata-${index}`}>
+                              {typeof metadata === "string"
+                                ? `${metadata}`
+                                : `${metadata.label}: ${metadata.value}`}
+                            </Text>
+                          )
                         )
-                      )
-                    ) : (
-                      <>
-                        {typeof option[1].metadata === "object" &&
-                          Object.entries(option[1].metadata).map(
-                            (metadata: { [key: string]: any }, index) => (
-                              <Text key={`context-metadata-${index}`}>
-                                {metadata[0]}: {metadata[1]}
-                              </Text>
-                            )
-                          )}
-                      </>
-                    )}
+                      ) : (
+                        <>
+                          {typeof option[1].metadata === "object" &&
+                            Object.entries(option[1].metadata).map(
+                              (metadata: { [key: string]: any }, index) => (
+                                <Text key={`context-metadata-${index}`}>
+                                  {metadata[0]}: {metadata[1]}
+                                </Text>
+                              )
+                            )}
+                        </>
+                      )}
+                    </>
                   </PopoverBody>
                 </PopoverContent>
               )}

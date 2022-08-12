@@ -7,17 +7,22 @@ import {
   Input,
 } from "@chakra-ui/react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { Row } from "../../../interfaces/dialog";
+import { useEffect } from "react";
+import { IInput } from "../../../interfaces/dialog";
 
 interface Props {
-  row: Row;
+  row: IInput;
   index: number;
-  handleChange: (value: string | boolean, index: number) => void;
+  handleChange: (value: string, index: number) => void;
   passwordStates: boolean[];
   handlePasswordStates: (index: number) => void;
 }
 
 const InputField: React.FC<Props> = (props) => {
+  useEffect(() => {
+    if(props.row.default) props.handleChange(props.row.default, props.index);
+  }, []);
+
   return (
     <>
       <Box mb={3} textAlign="left">
@@ -30,7 +35,9 @@ const InputField: React.FC<Props> = (props) => {
             />
           )}
           <Input
-            onChange={(e) => props.handleChange(e.target.value, props.index)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => props.handleChange(e.target.value, props.index)}
+            placeholder={props.row.placeholder}
+            defaultValue={props.row.default}
             type={
               !props.row.password || props.passwordStates[props.index]
                 ? "text"

@@ -9,54 +9,64 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { useNuiEvent } from "../../hooks/useNuiEvent";
+import { useKeyPress } from "../../hooks/useKeyPress";
 import { useLocales } from "../../providers/LocaleProvider";
 import { debugData } from "../../utils/debugData";
 import { fetchNui } from "../../utils/fetchNui";
-import { Row } from "../../interfaces/dialog";
-
-import Input from "./components/input";
+import { IInput, ICheckbox, ISelect, INumber, ISlider } from "../../interfaces/dialog";
+import InputField from "./components/input";
 import CheckboxField from "./components/checkbox";
 import SelectField from "./components/select";
+import NumberField from "./components/number";
+import SliderField from "./components/slider";
 
 interface Props {
   heading: string;
-  rows: Row[];
+  rows: Array<IInput | ICheckbox | ISelect | INumber | ISlider>;
 }
 
-debugData<Props>([
-  {
-    action: "openDialog",
-    data: {
-      heading: "Police locker",
-      rows: [
-        { type: "input", label: "Locker number" },
-        { type: "checkbox", label: "Some checkbox" },
-        { type: "input", label: "Locker PIN", password: true, icon: "lock" },
-        { type: "checkbox", label: "Some other checkbox" },
-        {
-          type: "select",
-          label: "Locker type",
-          options: [
-            { value: "option1", label: "Option 1" },
-            { value: "option2", label: "Option 2" },
-            { value: "option3", label: "Option 3" },
-          ],
-        },
-      ],
-    },
-  },
-]);
+// debugData<Props>([
+//   {
+//     action: "openDialog",
+//     data: {
+//       heading: "Police locker",
+//       rows: [
+//         { type: "input", label: "Locker number", placeholder: "420" },
+//         { type: "checkbox", label: "Some checkbox" },
+//         { type: "input", label: "Locker PIN", password: true, icon: "lock" },
+//         { type: "checkbox", label: "Some other checkbox", checked: true },
+//         {
+//           type: "select",
+//           label: "Locker type",
+//           options: [
+//             { value: "option1" },
+//             { value: "option2", label: "Option 2" },
+//             { value: "option3", label: "Option 3" },
+//           ],
+//         },
+//         { type: "number", label: "Number counter", default: 12 },
+//         { type: "slider", label: "Slide bar", min: 10, max: 50, step: 2 },
+//       ],
+//     },
+//   },
+// ]);
 
 const InputDialog: React.FC = () => {
   const [fields, setFields] = React.useState<Props>({
     heading: "",
     rows: [{ type: "input", label: "" }],
   });
-  const [inputData, setInputData] = React.useState<Array<string | boolean>>([]);
+  const [inputData, setInputData] = React.useState<
+    Array<string | number | boolean>
+  >([]);
   const [passwordStates, setPasswordStates] = React.useState<boolean[]>([]);
   const [visible, setVisible] = React.useState(false);
-
+  const enterPressed = useKeyPress("Enter");
   const { locale } = useLocales();
+
+  React.useEffect(() => {
+    if (visible && enterPressed === false) handleConfirm();
+  }, [enterPressed]);
 
   const handlePasswordStates = (index: number) => {
     setPasswordStates({
@@ -77,7 +87,7 @@ const InputDialog: React.FC = () => {
     fetchNui("inputData");
   };
 
-  const handleChange = (value: string | boolean, index: number) => {
+  const handleChange = (value: string | number | boolean, index: number) => {
     setInputData((previousData) => {
       previousData[index] = value;
       return previousData;
@@ -103,10 +113,10 @@ const InputDialog: React.FC = () => {
         <ModalContent>
           <ModalHeader textAlign="center">{fields.heading}</ModalHeader>
           <ModalBody fontFamily="Poppins" textAlign="left">
-            {fields.rows.map((row, index) => (
+            {fields.rows.map((row: IInput | ICheckbox | ISelect | INumber | ISlider, index) => (
               <React.Fragment key={`row-${index}`}>
                 {row.type === "input" && (
-                  <Input
+                  <InputField
                     key={`input-${index}`}
                     row={row}
                     index={index}
@@ -124,6 +134,20 @@ const InputDialog: React.FC = () => {
                 )}
                 {row.type === "select" && (
                   <SelectField
+                    row={row}
+                    index={index}
+                    handleChange={handleChange}
+                  />
+                )}
+                {row.type === "number" && (
+                  <NumberField
+                    row={row}
+                    index={index}
+                    handleChange={handleChange}
+                  />
+                )}
+                {row.type === "slider" && (
+                  <SliderField
                     row={row}
                     index={index}
                     handleChange={handleChange}

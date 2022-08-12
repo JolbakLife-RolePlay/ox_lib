@@ -1,19 +1,6 @@
-
--- ox_lib
--- Copyright (C) 2021	Linden <https://github.com/thelindat>
-
--- This program is free software: you can redistribute it and/or modify
--- it under the terms of the GNU General Public License as published by
--- the Free Software Foundation, either version 3 of the License, or
--- (at your option) any later version.
-
--- This program is distributed in the hope that it will be useful,
--- but WITHOUT ANY WARRANTY; without even the implied warranty of
--- MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
--- GNU General Public License for more details.
-
--- You should have received a copy of the GNU General Public License
--- along with this program. If not, see <https://www.gnu.org/licenses/gpl-3.0.html>
+-- ox_lib <https://github.com/overextended/ox_lib>
+-- Copyright (C) 2021 Linden <https://github.com/thelindat>
+-- LGPL-3.0-or-later <https://www.gnu.org/licenses/lgpl-3.0.en.html>
 
 if not _VERSION:find('5.4') then
 	error('^1Lua 5.4 must be enabled in the resource manifest!^0', 2)
@@ -58,6 +45,8 @@ end
 -- API
 -----------------------------------------------------------------------------------------------
 
+local export = exports[ox_lib]
+
 local function call(self, index, ...)
 	local module = rawget(self, index)
 	if not module then
@@ -65,7 +54,7 @@ local function call(self, index, ...)
 
 		if not module then
 			local function method(...)
-				return exports[ox_lib][index](nil, ...)
+				return export[index](nil, ...)
 			end
 
 			if not ... then
@@ -83,11 +72,9 @@ lib = setmetatable({
 	name = ox_lib,
 	service = service,
 	exports = {},
-	onCache = setmetatable({}, {
-		__call = function(self, key, cb)
-			self[key] = cb
-		end
-	})
+	onCache = function(key, cb)
+		AddEventHandler(('ox_lib:cache:%s'):format(key), cb)
+	end
 }, {
 	__index = call,
 	__call = call,
@@ -110,7 +97,7 @@ function SetInterval(callback, interval, ...)
 
 	assert(cbType == 'function', ('Callback must be a function. Received %s'):format(tostring(cbType)))
 	local id
-	local args = {...}
+	local args = { ... }
 
 	Citizen.CreateThreadNow(function(ref)
 		id = ref
@@ -132,63 +119,43 @@ function ClearInterval(id)
 	intervals[id] = -1
 end
 
-
 -----------------------------------------------------------------------------------------------
 -- Cache
 -----------------------------------------------------------------------------------------------
 
-local ox = GetResourceState('ox_core') ~= 'missing' and setmetatable({}, {
-	__index = function()
-		return true
-	end
-}) or {
-	groups = GetResourceState('ox_groups') ~= 'missing',
-}
-
-local _cache = setmetatable({}, {
-	__index = function(self, key)
-		return rawset(self, key, exports[ox_lib].cache(nil, key) or false)[key]
-	end,
-
-	__call = function(self)
-		table.wipe(self)
-
-		if ox.groups then
-			self.groups = setmetatable({}, {
-				__index = function(groups, index)
-					groups[index] = GlobalState['group:'..index]
-					return groups[index]
-				end
-			})
-		end
-	end
-})
-
-cache = setmetatable({
-	resource = GetCurrentResourceName(),
-}, {
-	__index = _cache,
-	__metatable = _cache
-})
+cache = { resource = GetCurrentResourceName() }
 
 if service == 'client' then
-	cache.playerId = PlayerId()
-	cache.serverId = GetPlayerServerId(cache.playerId)
-end
+	setmetatable(cache, {
+		__index = function(self, key)
+			AddEventHandler(('ox_lib:cache:%s'):format(key), function(value)
+				self[key] = value
+			end)
 
-Citizen.CreateThreadNow(function()
-	while true do
-		_cache()
-		Wait(60000)
-	end
-end)
+			return rawset(self, key, export.cache(nil, key) or false)[key]
+		end,
+	})
 
-AddEventHandler('ox_lib:updateCache', function(data)
-	for key, value in pairs(data) do
-		if lib.onCache[key] then
-			lib.onCache[key](value)
+	RegisterNetEvent(('%s:notify'):format(cache.resource), function(data)
+		if locale then
+			if data.title then
+				data.title = locale(data.title) or data.title
+			end
+
+			if data.description then
+				data.description = locale(data.description) or data.description
+			end
 		end
 
-		_cache[key] = value
+		return export:notify(data)
+	end)
+
+	cache.playerId = PlayerId()
+	cache.serverId = GetPlayerServerId(cache.playerId)
+else
+	local notify = ('%s:notify'):format(cache.resource)
+
+	function lib.notify(source, data)
+		TriggerClientEvent(notify, source, data)
 	end
-end)
+end

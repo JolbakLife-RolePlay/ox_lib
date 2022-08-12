@@ -1,11 +1,39 @@
 import { IconProp } from "@fortawesome/fontawesome-svg-core";
 
-type RowType = "input" | "checkbox" | "select";
-
-export interface Row {
-  type: RowType;
+export interface IInput {
+  type: "input",
   label: string;
-  options?: { value: string; label: string }[];
+  placeholder?: string;
+  default?: string;
   password?: boolean;
   icon?: IconProp;
+}
+
+export interface ICheckbox {
+  type: "checkbox",
+  label: string;
+  checked?: boolean;
+}
+
+export interface ISelect {
+  type: "select",
+  label: string;
+  default?: string;
+  options?: { value: string; label?: string }[];
+}
+
+export interface INumber {
+  type: "number",
+  label: string;
+  placeholder?: string;
+  default?: number;
+}
+
+export interface ISlider {
+  type: "slider",
+  label: string;
+  default?: number;
+  min?: number;
+  max?: number;
+  step?: number;
 }
